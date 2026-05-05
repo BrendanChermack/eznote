@@ -372,7 +372,6 @@ def generate():
                 save_progress(jid, i + 1, note_parts, total)
 
             final = "\n\n---\n\n".join(p for p in note_parts if p)
-            clear_progress(jid)
             yield json.dumps({"type": "done", "notes": final, "chunks": total}) + "\n"
 
         except ValueError as e:

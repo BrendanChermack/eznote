@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EZnote</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f9f8f6;
+    --surface: #ffffff;
+    --surface-2: #f2f0ed;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.2);
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-faint: #9a9a9a;
+    --accent: #1a1a1a;
+    --accent-fg: #ffffff;
+    --success: #1a7a4a;
+    --success-bg: #edf7f1;
+    --error: #b91c1c;
+    --error-bg: #fef2f2;
+    --info-bg: #eff6ff;
+    --info: #1d4ed8;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141414;
+      --surface: #1e1e1e;
+      --surface-2: #272727;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.15);
+      --text: #e8e8e8;
+      --text-muted: #9a9a9a;
+      --text-faint: #666;
+      --accent: #e8e8e8;
+      --accent-fg: #141414;
+      --success: #4ade80;
+      --success-bg: #052e16;
+      --error: #f87171;
+      --error-bg: #2d0a0a;
+      --info-bg: #0c1a3d;
+      --info: #93c5fd;
+    }
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .layout {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  /* Top bar */
+  .topbar {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar-brand { font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .topbar-sub { font-size: 12px; color: var(--text-muted); margin-left: 10px; }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: calc(100vh - 52px);
+    position: sticky;
+    top: 52px;
+    overflow-y: auto;
+  }
+
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: var(--sans);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, input[type="password"]:focus {
+    border-color: var(--border-strong);
+  }
+  input::placeholder { color: var(--text-faint); }
+
+  .check-list { display: flex; flex-direction: column; gap: 8px; }
+  .check-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; user-select: none; }
+  .check-item input { cursor: pointer; accent-color: var(--accent); width: 14px; height: 14px; }
+  .check-item:hover { color: var(--text); }
+
+  .sidebar-divider { height: 1px; background: var(--border); }
+
+  .btn {
+    width: 100%;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--sans);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    border: none;
+    letter-spacing: 0.01em;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-primary { background: var(--accent); color: var(--accent-fg); }
+  .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
+
+  .hint { font-size: 11px; color: var(--text-faint); line-height: 1.5; }
+  .hint a { color: var(--info); text-decoration: none; }
+  .hint a:hover { text-decoration: underline; }
+
+  /* Main content */
+  .main {
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    height: calc(100vh - 52px);
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-faint);
+    text-align: center;
+  }
+  .empty-icon { font-size: 36px; opacity: 0.4; }
+  .empty-state h3 { font-size: 15px; font-weight: 500; color: var(--text-muted); }
+  .empty-state p { font-size: 13px; max-width: 320px; line-height: 1.6; }
+
+  /* Progress */
+  .progress-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    display: none;
+  }
+  .progress-card.visible { display: block; }
+  .progress-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step { display: flex; align-items: flex-start; gap: 12px; }
+  .step-icon {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+    transition: all 0.2s;
+    font-size: 10px;
+  }
+  .step.active .step-icon {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+  .step.done .step-icon {
+    border-color: var(--success);
+    background: var(--success-bg);
+    color: var(--success);
+  }
+  .step-body { flex: 1; }
+  .step-name { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+  .step.active .step-name { color: var(--text); }
+  .step.done .step-name { color: var(--text-muted); }
+  .step-detail { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+  .chunk-bar { margin-top: 10px; }
+  .chunk-bar-label { font-size: 11px; color: var(--text-faint); margin-bottom: 4px; }
+  .chunk-track { height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .chunk-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; width: 0%; }
+
+  .spinner-inline {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent-fg);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-card {
+    background: var(--error-bg);
+    border: 1px solid var(--error);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--error);
+    display: none;
+  }
+  .error-card.visible { display: block; }
+
+  /* Result */
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    flex: 1;
+  }
+  .result-card.visible { display: flex; }
+  .result-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--surface-2);
+  }
+  .result-info { flex: 1; min-width: 0; }
+  .result-title { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .result-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn-sm {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--radius);
+    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--sans);
+    transition: background 0.15s;
+  }
+  .btn-sm:hover { background: var(--surface); }
+  .btn-sm.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+  .btn-sm.primary:hover { opacity: 0.85; }
+
+  .preview {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--bg);
+  }
+
+  /* Checkmark SVG path */
+  .check-path { stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:4px;">
+      <span class="topbar-brand">EZnote</span>
+      <span class="topbar-sub">note generator</span>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="field-group">
+      <label class="field-label">YouTube URL</label>
+      <input type="text" id="url-input" placeholder="https://youtu.be/..." />
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Output options</label>
+      <div class="check-list">
+        <label class="check-item"><input type="checkbox" id="opt-frontmatter" checked /> Frontmatter (title, date, tags, source)</label>
+        <label class="check-item"><input type="checkbox" id="opt-timestamps" checked /> Timestamped video links</label>
+        <label class="check-item"><input type="checkbox" id="opt-callouts" checked /> Callout blocks for key concepts</label>
+        <label class="check-item"><input type="checkbox" id="opt-chapters" checked /> Chapter headers</label>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <button class="btn btn-primary" id="go-btn" onclick="startPipeline()">Generate notes</button>
+
+
+  </aside>
+
+  <main class="main" id="main">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">📝</div>
+      <h3>No notes yet</h3>
+      <p>Paste a YouTube link and click Generate notes. The full transcript is chunked and processed in sequence. Progress is saved after each chunk.</p>
+    </div>
+
+    <div class="error-card" id="error-card"></div>
+
+    <div class="progress-card" id="progress-card">
+      <div class="progress-title">Generating notes</div>
+      <div class="steps">
+        <div class="step" id="step-1">
+          <div class="step-icon" id="icon-1">1</div>
+          <div class="step-body">
+            <div class="step-name">Fetching transcript</div>
+            <div class="step-detail" id="detail-1">Using yt-dlp via local server</div>
+          </div>
+        </div>
+        <div class="step" id="step-2">
+          <div class="step-icon" id="icon-2">2</div>
+          <div class="step-body">
+            <div class="step-name">Cleaning auto-generated captions</div>
+            <div class="step-detail" id="detail-2">Fixing punctuation, capitalization, and domain terms</div>
+          </div>
+        </div>
+        <div class="step" id="step-3">
+          <div class="step-icon" id="icon-3">3</div>
+          <div class="step-body">
+            <div class="step-name">Generating notes from chunks</div>
+            <div class="step-detail" id="detail-3">Splitting transcript and processing each section</div>
+            <div class="chunk-bar" id="chunk-bar" style="display:none;">
+              <div class="chunk-bar-label" id="chunk-label">Chunk 0 of 0</div>
+              <div class="chunk-track"><div class="chunk-fill" id="chunk-fill"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="step" id="step-4">
+          <div class="step-icon" id="icon-4">4</div>
+          <div class="step-body">
+            <div class="step-name">Assembling final document</div>
+            <div class="step-detail" id="detail-4">Merging chunks into a single Obsidian note</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card" id="result-card">
+      <div class="result-header">
+        <div class="result-info">
+          <div class="result-title" id="result-title">Notes</div>
+          <div class="result-meta" id="result-meta"></div>
+        </div>
+        <div class="result-actions">
+          <button class="btn-sm" onclick="copyNote()">Copy</button>
+          <button class="btn-sm primary" onclick="saveNote()">Save to notes/</button>
+        </div>
+      </div>
+      <div class="preview" id="preview"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const CHUNK_SIZE = 12000;
+
+let generatedNote = "";
+let noteFilename = "youtube-notes.md";
+let currentJobId = "";
+
+// Server health check
+
+function extractVideoId(url) {
+  const patterns = [
+    /youtu\.be\/([^?&\s]+)/,
+    /youtube\.com\/watch\?.*v=([^&\s]+)/,
+    /youtube\.com\/embed\/([^?&\s]+)/,
+    /youtube\.com\/shorts\/([^?&\s]+)/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function setStep(n, state) {
+  const el = document.getElementById("step-" + n);
+  const icon = document.getElementById("icon-" + n);
+  if (!el || !icon) return;
+  el.className = "step " + state;
+  if (state === "active") {
+    icon.innerHTML = `<div class="spinner-inline" style="border-top-color:var(--accent-fg);"></div>`;
+  } else if (state === "done") {
+    icon.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12"><polyline class="check-path" points="2,6 5,9 10,3"/></svg>`;
+  } else {
+    icon.textContent = n;
+  }
+}
+
+function setDetail(n, text) {
+  const el = document.getElementById("detail-" + n);
+  if (el) el.textContent = text;
+}
+
+function showError(msg) {
+  const el = document.getElementById("error-card");
+  el.textContent = msg;
+  el.classList.add("visible");
+  document.getElementById("progress-card").classList.remove("visible");
+}
+
+function clearError() {
+  document.getElementById("error-card").classList.remove("visible");
+}
+
+function chunkText(text, size) {
+  const chunks = [];
+  // Try to split on sentence boundaries near the chunk size
+  let start = 0;
+  while (start < text.length) {
+    let end = start + size;
+    if (end >= text.length) {
+      chunks.push(text.slice(start));
+      break;
+    }
+    // Walk back to find a sentence boundary
+    let boundary = text.lastIndexOf(". ", end);
+    if (boundary <= start) boundary = end;
+    chunks.push(text.slice(start, boundary + 1));
+    start = boundary + 1;
+  }
+  return chunks.filter(c => c.trim().length > 50);
+}
+
+async function startPipeline() {
+  const urlVal = document.getElementById("url-input").value.trim();
+  if (!urlVal) { showError("Please enter a YouTube URL."); return; }
+
+  const videoId = extractVideoId(urlVal);
+  if (!videoId) { showError("Could not parse a video ID from that URL."); return; }
+
+  const opts = {
+    frontmatter: document.getElementById("opt-frontmatter").checked,
+    timestamps: document.getElementById("opt-timestamps").checked,
+    callouts: document.getElementById("opt-callouts").checked,
+    chapters: document.getElementById("opt-chapters").checked
+  };
+
+  document.getElementById("go-btn").disabled = true;
+  document.getElementById("result-card").classList.remove("visible");
+  document.getElementById("empty-state").style.display = "none";
+  document.getElementById("progress-card").classList.add("visible");
+  clearError();
+  generatedNote = "";
+  noteFilename = `youtube-${videoId}.md`;
+
+  // Step 1: fetch transcript
+  setStep(1, "active");
+  let transcriptRaw = "";
+  let videoTitle = "";
+  try {
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const r = await fetch(`/transcript?url=${encodeURIComponent(videoUrl)}`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "Transcript fetch failed");
+    transcriptRaw = data.transcript;
+    videoTitle = data.title || videoId;
+    setDetail(1, `${(transcriptRaw.length / 1000).toFixed(0)}k characters fetched — "${videoTitle}"`);
+  } catch(e) {
+    showError("Transcript fetch failed: " + e.message);
+    document.getElementById("go-btn").disabled = false;
+    return;
+  }
+  setStep(1, "done");
+
+  // Steps 2-4: streaming from server — cleaning, notes, assembly
+  setStep(2, "active");
+  setDetail(2, "Sending transcript to server...");
+
+  let genResult = null;
+  try {
+    const genResp = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transcript: transcriptRaw,
+        video_id: videoId,
+        video_url: `https://www.youtube.com/watch?v=${videoId}`,
+        opts
+      })
+    });
+    if (!genResp.ok) {
+      const err = await genResp.json().catch(() => ({}));
+      throw new Error(err.error || "Generation failed");
+    }
+
+    const reader = genResp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let msg;
+        try { msg = JSON.parse(line); } catch(e) { continue; }
+
+        if (msg.type === "start") {
+          currentJobId = msg.jid || "";
+          document.getElementById("chunk-bar").style.display = "block";
+          const resumeFrom = msg.resuming || 0;
+          const startPct = Math.round((resumeFrom / msg.total) * 100);
+          document.getElementById("chunk-label").textContent = resumeFrom > 0
+            ? `Resuming from chunk ${resumeFrom + 1} of ${msg.total}`
+            : `0 of ${msg.total} chunks`;
+          document.getElementById("chunk-fill").style.width = startPct + "%";
+        } else if (msg.type === "progress") {
+          const pct = Math.round(((msg.chunk - (msg.stage === "notes" ? 0 : 0.5)) / msg.total) * 100);
+          document.getElementById("chunk-fill").style.width = pct + "%";
+          if (msg.stage === "cleaning") {
+            setStep(2, "active");
+            setDetail(2, `Cleaning chunk ${msg.chunk} of ${msg.total}...`);
+            document.getElementById("chunk-label").textContent = `Cleaning ${msg.chunk} of ${msg.total}`;
+          } else {
+            setStep(2, "done");
+            setStep(3, "active");
+            setDetail(3, `Generating notes for chunk ${msg.chunk} of ${msg.total}...`);
+            document.getElementById("chunk-label").textContent = `Notes ${msg.chunk} of ${msg.total}`;
+          }
+        } else if (msg.type === "done") {
+          genResult = msg;
+        } else if (msg.type === "error") {
+          throw new Error(msg.error);
+        }
+      }
+    }
+    if (!genResult) throw new Error("Stream ended without a result.");
+  } catch(e) {
+    showError("Generation failed: " + e.message);
+    document.getElementById("go-btn").disabled = false;
+    return;
+  }
+
+  setStep(2, "done");
+  setStep(3, "done");
+  document.getElementById("chunk-fill").style.width = "100%";
+  document.getElementById("chunk-label").textContent = `All ${genResult.chunks} chunks processed`;
+
+  // Step 4: assemble
+  setStep(4, "active");
+  generatedNote = genResult.notes;
+
+  // If we have a title from yt-dlp and frontmatter is on, patch the title in
+  if (opts.frontmatter && videoTitle && !videoTitle.includes(videoId)) {
+    generatedNote = generatedNote.replace(/title:.*/, `title: "${videoTitle}"`);
+    noteFilename = videoTitle.replace(/[^a-zA-Z0-9 \-_]/g, "").trim().replace(/\s+/g, "-").toLowerCase() + ".md";
+  }
+
+  setStep(4, "done");
+  document.getElementById("progress-card").classList.remove("visible");
+
+  const lineCount = generatedNote.split("\n").length;
+  document.getElementById("result-title").textContent = videoTitle || "Notes";
+  document.getElementById("result-meta").textContent =
+    `${genResult.chunks} chunks · ${lineCount} lines · ${(generatedNote.length / 1000).toFixed(1)} kb · ${noteFilename}`;
+  document.getElementById("preview").textContent = generatedNote;
+  document.getElementById("result-card").classList.add("visible");
+  document.getElementById("go-btn").disabled = false;
+}
+
+async function saveNote() {
+  if (!generatedNote) return;
+  const btn = document.querySelector(".btn-sm.primary");
+  const orig = btn.textContent;
+  btn.textContent = "Saving...";
+  btn.disabled = true;
+  try {
+    const resp = await fetch("/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: noteFilename, notes: generatedNote, jid: currentJobId })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Save failed");
+    btn.textContent = "Saved!";
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+  } catch(e) {
+    btn.textContent = "Error";
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+    alert("Save failed: " + e.message);
+  }
+}
+
+
+
+function copyNote() {
+  if (!generatedNote) return;
+  navigator.clipboard.writeText(generatedNote).then(() => {
+    const btn = document.querySelector(".btn-sm:not(.primary)");
+    const orig = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+</script>
+</body>
+</html>

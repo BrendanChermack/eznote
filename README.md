@@ -90,8 +90,26 @@ EZnote/
 └── .env.example     # Template for .env
 ```
 
+## Using Notes as an AI Knowledge Base (RAG)
+
+Each saved `.md` file is a dense, structured summary of a single video — which makes the `notes/` folder a personal knowledge base you can query with AI.
+
+**With Obsidian:**
+
+1. Point an Obsidian vault at the `notes/` folder (or copy files into an existing vault)
+2. Enable **vault QA / RAG mode** in a plugin
+3. Ask questions in natural language — the plugin retrieves the most relevant note files and feeds them as context to the AI
+
+Because every note has YAML frontmatter with tags, a source URL, and a date, Obsidian can filter and link notes automatically. Over time you build a searchable library where each video becomes a retrievable chunk of knowledge.
+
+**Example workflow:**
+
+- Watch 20 lectures on distributed systems → generate a note for each → ask "How do these videos explain consensus algorithms?" and get a synthesized answer grounded in your own notes.
+
+The structured format EZnote produces (headings, bold terms, callout blocks, key takeaways) is intentionally designed to be both human-readable and high-signal for retrieval — short, dense chunks that give an LLM precise context without noise.
+
 ## Notes
 
 - The API key is never exposed to the browser — all AI calls go through `server.py`.
-- Generated notes are Obsidian-compatible and can be dropped directly into a vault.
 - The model used is `openrouter/free` by default; you can change `OPENROUTER_MODEL` in `server.py` to any model available on OpenRouter.
+

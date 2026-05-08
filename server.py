@@ -155,9 +155,7 @@ def clean_chunk(raw):
 Rules:
 - Fix punctuation: add periods, commas, and paragraph breaks where natural
 - Fix capitalization
-- Correct mishearings of financial and trading terms: orderflow, order flow, liquidity, delta, \
-volume profile, futures, macro, sentiment, central bank, bond, forex, hedging, auction, intraday, \
-swing trading, prop firm, market microstructure, price action, bid/ask, depth of market, imbalance, absorption
+- Correct mishearings and transcription errors for domain-specific terminology based on context
 - Remove filler words (um, uh, you know) only when they carry no meaning
 - Preserve all content — do not summarize, shorten, or cut anything
 - Output only the cleaned transcript text"""
